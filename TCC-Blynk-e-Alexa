@@ -1,0 +1,71 @@
+// Bibliotecas do Projeto
+#define BLYNK_PRINT Serial // Função p/ exibição de status do projeto
+#include <ESP8266WiFi.h>          // Configurações de conexão com a rede Wi-fi
+#include <BlynkSimpleEsp8266.h>   // Configurações de conexão com o servidor blynk 
+#include <SimpleTimer.h>          // Funções de tempo e milésimos de segundo
+#include <DHT.h>                  // Configurações dos sensores de temperatura e umidade
+
+#define LED_Red 4            // Definindo Pino(D2) como saída p/ Led Vermelho
+#define pinSensorD 12        // Definindo Pino(D6) p/ sensor Digital de chuva
+#define DHTPIN 14            // Definindo Pino(D5) do ESP8266 p/ o sensor DHT
+#define DHTTYPE DHT11        // Definindo tipo de sensor: DHT 11
+
+
+WidgetLED Led1(V8);        // Led Virtual na tela do Blynk (indicador de Chuva)
+DHT dht(DHTPIN, DHTTYPE);  // Setando configurações junto a biblioteca
+BlynkTimer timer;          // Atribuindo o tempo ao 'timer'
+
+// Configurações de servidor e rede
+char auth[] = "Token do projeto" // Tok projeto
+char ssid[] = "brisa-1121540";                     // Rede Wi-Fi Local
+char pass[] = "t5zpzodb";                          // Senha da rede
+
+
+void Chuva(){ // Função para verificação do sensor de Chuva
+   if (digitalRead(pinSensorD) == HIGH )
+   { 
+    Led1.off(); // LED Virtual no Blynk OFF
+   }
+   else
+   { 
+    Led1.on();  // LED Virtual no Blynk ON
+   }
+}
+
+void Temp() // Função para monitoramento de Temperatura e Umidade
+{
+  float h = dht.readHumidity();    // Definindo h p/ receber valor de umidade
+  float t = dht.readTemperature(); // Definindo t p/ receber valor de temperatura
+
+  if (isnan(h) || isnan(t)) {
+    Serial.println("Falha ao ler o sensor DHT!");
+    return; }
+    
+  Blynk.virtualWrite(V6, h);  // Enviando h p/ o pino virtual V6 do Blynk
+  Blynk.virtualWrite(V5, t);  // Enviando t p/ o pino virtual V5 do Blynk
+}
+
+BLYNK_WRITE(V1)
+{
+  int pinValue = param.asInt(); // Requisitando valor binário do APP Blynk
+  digitalWrite(LED_Red,pinValue);
+}
+
+void setup()
+{
+  Serial.begin(9600);              // iniciando comunicação serial
+  pinMode(pinSensorD, INPUT);      // Entrada para sensor de Chuva
+  pinMode(LED_Red,OUTPUT);         // Saída para ligação do Led
+  digitalWrite(LED_Red,LOW);       // Mantendo Led inicialmente OFF
+  Blynk.begin(auth, ssid, pass);   // Iniciando funções do Blynk
+  dht.begin();                     // Iniciando funções do sensor DHT
+
+  timer.setInterval(1000L, Temp);  // chamando a função Temp a cada segundo
+  timer.setInterval(1000L, Chuva); // chamando a função Chuva a cada segundo
+}
+
+void loop()
+{
+  Blynk.run(); // Mantém o código ativo (rodando)
+  timer.run(); // Ativa instruções de temporização
+}
